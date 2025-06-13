@@ -1,0 +1,62 @@
+- hosts: local
+  become: true
+  tasks:
+
+    # Install required system packages
+    - name: Install required system packages
+      apt:
+        name:
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+        state: present
+        update_cache: yes
+
+    # Ensure containerd and docker-ce are removed first
+    - name: Remove conflicting packages
+      apt:
+        name:
+          - docker.io
+          - docker-ce
+          - docker-ce-cli
+          - containerd
+          - containerd.io
+        state: absent
+        purge: yes
+        autoremove: yes
+
+    # Install docker.io
+    - name: Install docker.io
+      apt:
+        name:
+          - docker.io
+        state: present
+        update_cache: yes
+
+    # Install Docker Compose v2 (manual)
+    - name: Install Docker Compose v2 (manual)
+      get_url:
+        url: https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64
+        dest: /usr/local/bin/docker-compose
+        mode: '0755'
+
+    # Add ubuntu user to docker group
+    - name: Add ubuntu user to docker group
+      user:
+        name: ubuntu
+        groups: docker
+        append: yes
+
+    # Optional: Copy app to target folder
+    - name: Copy app to target folder (if needed)
+      synchronize:
+        src: /home/ubuntu/todo-app/
+        dest: /home/ubuntu/todo-app/
+        delete: yes
+
+    # Run docker-compose up
+    - name: Run docker-compose up
+      shell: docker-compose up -d --build
+      args:
+        chdir: /home/ubuntu/todo-app
